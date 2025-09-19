@@ -866,6 +866,10 @@ const adminPage = `
               <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 15%;">
                 提醒设置
               </th>
+              // 新增：20250919在表头添加提醒时间列
+              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 15%;">
+                提醒时间
+              </th>
               <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="width: 10%;">
                 状态
               </th>
@@ -1144,6 +1148,13 @@ const adminPage = `
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
             <p class="text-xs text-gray-500 mt-1">0 = 仅到期日当天提醒，1+ = 提前N天开始提醒</p>
             <div class="error-message text-red-500"></div>
+          </div>
+		  // 新增div ：20250919 修改订阅表单，增加时间设置字段
+		  <div>
+            <label for="reminderTime" class="block text-sm font-medium text-gray-700 mb-1">提醒时间</label>
+            <input type="time" id="reminderTime" value="09:00"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            <p class="text-xs text-gray-500 mt-1">每天检查并发送通知的时间（24小时制）</p>
           </div>
           
           <div>
@@ -1761,6 +1772,7 @@ const lunarBiz = {
 			// ...existing code...
 			'<td data-label="提醒设置" class="px-4 py-3"><div class="td-content-wrapper">' +
 			  '<div><i class="fas fa-bell mr-1"></i>提前' + (subscription.reminderDays || 0) + '天</div>' +
+	          '<div class="text-xs text-gray-500 mt-1">每日 ' + (subscription.reminderTime || '08:00') + '</div>' +   // 新增：20250919在数据行添加提醒时间显示
 			  (subscription.reminderDays === 0 ? '<div class="text-xs text-gray-500 mt-1">仅到期日提醒</div>' : '') +
 			'</div></td>' +
 			'<td data-label="状态" class="px-4 py-3"><div class="td-content-wrapper">' + statusHtml + '</div></td>' +
@@ -4194,7 +4206,7 @@ async function getSubscription(id, env) {
   return subscriptions.find(s => s.id === id);
 }
 
-// 2. 修改 createSubscription，支持 useLunar 字段
+// 2. 修改 createSubscription，支持 useLunar 字段。20250919修改创建订阅和更新订阅函数，添加时间字段。
 async function createSubscription(subscription, env) {
   try {
     const subscriptions = await getAllSubscriptions(env);
@@ -4254,6 +4266,8 @@ async function createSubscription(subscription, env) {
       isActive: subscription.isActive !== false,
       autoRenew: subscription.autoRenew !== false,
       useLunar: useLunar, // 新增
+      createdAt: new Date().toISOString()
+	  reminderTime: subscription.reminderTime || '08:00', // 默认早上8点
       createdAt: new Date().toISOString()
     };
 
@@ -4335,6 +4349,8 @@ if (useLunar) {
       autoRenew: subscription.autoRenew !== undefined ? subscription.autoRenew : (subscriptions[index].autoRenew !== undefined ? subscriptions[index].autoRenew : true),
       useLunar: useLunar, // 新增
       updatedAt: new Date().toISOString()
+	  reminderTime: subscription.reminderTime || subscriptions[index].reminderTime || '08:00',  // 新增：20250919
+      updatedAt: new Date().toISOString()                                                       // 新增：20250919
     };
 
     await env.SUBSCRIPTIONS_KV.put('subscriptions', JSON.stringify(subscriptions));
@@ -4883,6 +4899,15 @@ async function checkExpiringSubscriptions(env) {
     const timezone = config?.TIMEZONE || 'UTC';
     const currentTime = getCurrentTimeInTimezone(timezone);
     console.log('[定时任务] 开始检查即将到期的订阅 UTC: ' + new Date().toISOString() + ', ' + timezone + ': ' + currentTime.toLocaleString('zh-CN', {timeZone: timezone}));
+	// 新增：20250919 获取当前时区的小时和分钟
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    const timeStr = formatter.format(currentTime);
+    console.log('[定时任务] 当前时间:', timeStr, timezone);
 
     const subscriptions = await getAllSubscriptions(env);
     console.log('[定时任务] 共找到 ' + subscriptions.length + ' 个订阅');
@@ -4895,7 +4920,20 @@ for (const subscription of subscriptions) {
     console.log('[定时任务] 订阅 "' + subscription.name + '" 已停用，跳过');
     continue;
   }
-
+  // 检查是否到了提醒时间
+  const reminderTime = subscription.reminderTime || '08:00';
+  const [targetHour, targetMinute] = reminderTime.split(':').map(Number);
+  const [currentHour, currentMinute] = timeStr.split(':').map(Number);
+      
+  // 检查是否在提醒时间的±2分钟范围内
+  const currentTotalMinutes = currentHour * 60 + currentMinute;
+  const targetTotalMinutes = targetHour * 60 + targetMinute;
+  const minuteDiff = Math.abs(currentTotalMinutes - targetTotalMinutes);
+      
+   if (minuteDiff > 2) { // 如果不在提醒时间的±2分钟范围内，跳过
+        continue;
+   }
+	
   let daysDiff;
   if (subscription.useLunar) {
     const expiryDate = new Date(subscription.expiryDate);
