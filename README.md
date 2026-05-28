@@ -87,6 +87,9 @@ Fork仓库,然后点击自己仓库里的部署按钮，等待部署完成,**注
 4. **享受智能提醒**！
 
 ## 🔧 通知渠道配置
+### Upstash QStash 精确提醒设置
+- **QStash API 地址**、**QStash Token**：从[upstash](https://upstash.com/) 使用github账号授权登录获取
+- **回调 URL(当前 Worker 公网地址)**：https://your-worker.workers.dev/api/qstash-callback 建议使用自定义域名
 
 ### Telegram
 - **Bot Token**: 从 [@BotFather](https://t.me/BotFather) 获取
@@ -119,7 +122,8 @@ Fork仓库,然后点击自己仓库里的部署按钮，等待部署完成,**注
 - 若希望在北京时间（UTC+8）早上 8 点提醒，可将 Cron 设置为 `0 0 * * *`
 - 若需要小时级提醒，可将 Cron 调整为 `0 * * * *`（每小时执行一次），并在系统配置中指定允许的通知小时
 - 系统配置中的 “系统时区” 用于计算订阅剩余时间和格式化展示，建议与提醒需求保持一致
-
+- 启用Upstash QStash精确提醒后，Cron仅作为兜底通知
+  
 ### 🔐 第三方 API 安全调用
 - 通过 `POST /api/notify/{token}` 可触发系统通知，请在后台配置“第三方 API 访问令牌”
 - 令牌也可通过 `Authorization: Bearer <token>` 或 `?token=<token>` 传入
