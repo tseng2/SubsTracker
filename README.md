@@ -89,7 +89,7 @@ Fork仓库,然后点击自己仓库里的部署按钮，等待部署完成,**注
 ## 🔧 通知渠道配置
 ### Upstash QStash 精确提醒设置
 - **QStash API 地址**、**QStash Token**：使用github账号授权登录，从[upstash](https://upstash.com/)获取
-- **回调 URL(当前 Worker 公网地址)**： 建议使用自定义域名,[回调URL示例](https://your-worker.workers.dev/api/qstash-callback)
+- **回调 URL(当前 Worker 公网地址)**：建议使用自定义域名，[回调URL示例](https://your-worker.workers.dev/api/qstash-callback)
 ### Telegram
 - **Bot Token**: 从 [@BotFather](https://t.me/BotFather) 获取
 - **Chat ID**: 从 [@userinfobot](https://t.me/userinfobot) 获取
